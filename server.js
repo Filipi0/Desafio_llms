@@ -1,15 +1,16 @@
+// Backend: Express.js Server
 const express = require('express');
 const axios = require('axios');
 const cors = require('cors');
 require('dotenv').config();
- 
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 app.use(cors());
 
-// Função para enviar a pergunta para os modelos de IA
+// Function to fetch responses from different LLMs
 const fetchResponses = async (question) => {
     const apis = {
         gemini: { url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}` },
@@ -69,7 +70,7 @@ const fetchResponses = async (question) => {
     return Promise.all(requests);
 };
 
-//rota para enviar a pergunta
+// Route to get responses from multiple LLMs
 app.post('/ask', async (req, res) => {
     const { question } = req.body;
     if (!question) return res.status(400).json({ error: 'Question is required' });
@@ -78,4 +79,4 @@ app.post('/ask', async (req, res) => {
     res.json(results);
 });
 
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://0.0.0.0:${PORT}`));
