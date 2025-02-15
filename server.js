@@ -10,7 +10,12 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json());
 app.use(cors());
 
-// Function to fetch responses from different LLMs
+console.log("🔍 Verificando variáveis de ambiente:");
+console.log("GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "Chave carregada" : "Chave NÃO encontrada");
+console.log("OPENROUTER_API_KEY:", process.env.OPENROUTER_API_KEY ? "Chave carregada" : "Chave NÃO encontrada");
+console.log("COHERE_API_KEY:", process.env.COHERE_API_KEY ? "Chave carregada" : "Chave NÃO encontrada");
+
+// Função para enviar a pergunta para os modelos de IA e receber as respostas
 const fetchResponses = async (question) => {
     const apis = {
         gemini: { url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}` },
@@ -70,7 +75,7 @@ const fetchResponses = async (question) => {
     return Promise.all(requests);
 };
 
-// Route to get responses from multiple LLMs
+// Rota para enviar a pergunta e receber as respostas
 app.post('/ask', async (req, res) => {
     const { question } = req.body;
     if (!question) return res.status(400).json({ error: 'Question is required' });
