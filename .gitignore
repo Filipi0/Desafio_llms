@@ -1,17 +1,1 @@
-# Ignorar arquivos de ambiente e credenciais
-.env
-
-# Ignorar dependências do Node.js
-node_modules/
-package-lock.json
-
-# Logs e arquivos temporários
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-*.log
-
-# Arquivos de build do Render/Vercel
-dist/
-.cache/
-out/
+.env\nnode_modules/\npackage-lock.json\n*.log
