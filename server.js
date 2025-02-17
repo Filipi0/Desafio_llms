@@ -15,6 +15,11 @@ console.log("GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "Chave carregada" : 
 console.log("GROQ_API_KEY:", process.env.GROQ_API_KEY ? "Chave carregada" : "Chave NÃO encontrada");
 console.log("COHERE_API_KEY:", process.env.COHERE_API_KEY ? "Chave carregada" : "Chave NÃO encontrada");
 
+// Rota para testar se a API está ativa
+app.get('/', (req, res) => {
+    res.send('🚀 API rodando com sucesso!');
+});
+
 // Função para enviar a pergunta para os modelos de IA e receber as respostas
 const fetchResponses = async (question) => {
     const apis = {
@@ -102,4 +107,4 @@ app.post('/ask', async (req, res) => {
     res.json(results);
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log(`Servidor rodando em http://0.0.0.0:${PORT}`));
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
