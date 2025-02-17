@@ -80,11 +80,12 @@ const fetchResponses = async (question) => {
     const evaluationPrompt = {
         model: 'llama3-8b-8192',
         messages: [
-            { "role": "system", "content": "Avalie as respostas dos modelos abaixo e retorne a melhor resposta." },
+            { "role": "system", "content": "Você é um avaliador de respostas em português. Analise as respostas dos modelos abaixo e escolha a melhor, explicando sua escolha em português." },
             { "role": "user", "content": JSON.stringify(responses) }
         ],
         max_tokens: 300
     };
+    
     
     try {
         const evaluationResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', evaluationPrompt, {
