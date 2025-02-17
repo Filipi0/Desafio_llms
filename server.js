@@ -12,18 +12,18 @@ app.use(cors());
 
 console.log("🔍 Verificando variáveis de ambiente:");
 console.log("GEMINI_API_KEY:", process.env.GEMINI_API_KEY ? "Chave carregada" : "Chave NÃO encontrada");
-console.log("OPENROUTER_API_KEY:", process.env.OPENROUTER_API_KEY ? "Chave carregada" : "Chave NÃO encontrada");
+console.log("GROQ_API_KEY:", process.env.GROQ_API_KEY ? "Chave carregada" : "Chave NÃO encontrada");
 console.log("COHERE_API_KEY:", process.env.COHERE_API_KEY ? "Chave carregada" : "Chave NÃO encontrada");
 
 // Função para enviar a pergunta para os modelos de IA e receber as respostas
 const fetchResponses = async (question) => {
     const apis = {
         gemini: { url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}` },
-        openrouter: { url: 'https://openrouter.ai/api/v1/chat/completions', key: process.env.OPENROUTER_API_KEY },
+        groq: { url: 'https://api.groq.com/openai/v1/chat/completions', key: process.env.GROQ_API_KEY },
         cohere: { url: 'https://api.cohere.ai/v1/generate', key: process.env.COHERE_API_KEY }
     };
     
-    const requests = Object.entries(apis).map(async ([model, { url, key }]) => {
+    const responses = await Promise.all(Object.entries(apis).map(async ([model, { url, key }]) => {
         try {
             let headers = { 'Content-Type': 'application/json' };
             let data;
@@ -32,11 +32,10 @@ const fetchResponses = async (question) => {
                 data = { contents: [{ parts: [{ text: question }] }] };
             } else {
                 headers['Authorization'] = `Bearer ${key}`;
-                if (model === 'openrouter') {
-                    headers['HTTP-Referer'] = process.env.SITE_URL || 'http://localhost';
-                    headers['X-Title'] = process.env.SITE_NAME || 'MyApp';
+                
+                if (model === 'groq') {
                     data = { 
-                        model: 'cognitivecomputations/dolphin3.0-r1-mistral-24b:free',
+                        model: 'llama3-8b-8192',
                         messages: [
                             { "role": "system", "content": "Forneça apenas a resposta direta, sem explicações adicionais." },
                             { "role": "user", "content": question }
@@ -48,40 +47,59 @@ const fetchResponses = async (question) => {
                 }
             }
             
-            console.log(`Sending request to ${model} API...`);
+            console.log(`Enviando requisição para ${model} API...`);
             const response = await axios.post(url, data, { headers });
-            console.log(`Response from ${model}:`, response.data);
+            console.log(`Resposta de ${model}:`, response.data);
             
             let responseText;
             if (model === 'gemini') {
-                responseText = response.data.candidates[0].content.parts[0].text;
-            } else if (model === 'openrouter' && response.data.choices) {
-                responseText = response.data.choices[0].message.content;
+                responseText = response.data.candidates[0]?.content.parts[0]?.text || "Resposta não disponível.";
+            } else if (model === 'groq' && response.data.choices) {
+                responseText = response.data.choices[0]?.message.content || "Resposta não disponível.";
             } else if (response.data.choices) {
-                responseText = response.data.choices[0].text;
+                responseText = response.data.choices[0]?.text || "Resposta não disponível.";
             } else if (response.data.generations) {
-                responseText = response.data.generations[0].text;
+                responseText = response.data.generations[0]?.text || "Resposta não disponível.";
             } else {
-                responseText = response.data;
+                responseText = "Resposta não disponível.";
             }
             
             return { model, response: responseText };
         } catch (error) {
-            console.error(`Error with ${model}:`, error.response ? error.response.data : error.message);
+            console.error(`Erro com ${model}:`, error.response ? error.response.data : error.message);
             return { model, error: error.response ? error.response.data : error.message };
         }
-    });
-
-    return Promise.all(requests);
+    }));
+    
+    // Autoavaliação dos modelos
+    const evaluationPrompt = {
+        model: 'llama3-8b-8192',
+        messages: [
+            { "role": "system", "content": "Avalie as respostas dos modelos abaixo e retorne a melhor resposta." },
+            { "role": "user", "content": JSON.stringify(responses) }
+        ],
+        max_tokens: 300
+    };
+    
+    try {
+        const evaluationResponse = await axios.post('https://api.groq.com/openai/v1/chat/completions', evaluationPrompt, {
+            headers: { 'Authorization': `Bearer ${process.env.GROQ_API_KEY}`, 'Content-Type': 'application/json' }
+        });
+        const bestResponse = evaluationResponse.data.choices[0]?.message.content || "Não foi possível determinar a melhor resposta.";
+        return { responses, bestResponse };
+    } catch (error) {
+        console.error("Erro na avaliação das respostas:", error.response ? error.response.data : error.message);
+        return { responses, bestResponse: "Erro na avaliação." };
+    }
 };
 
 // Rota para enviar a pergunta e receber as respostas
 app.post('/ask', async (req, res) => {
     const { question } = req.body;
-    if (!question) return res.status(400).json({ error: 'Question is required' });
+    if (!question) return res.status(400).json({ error: 'A pergunta é obrigatória' });
     
     const results = await fetchResponses(question);
     res.json(results);
 });
 
-app.listen(PORT, '0.0.0.0', () => console.log(`Server running on http://0.0.0.0:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Servidor rodando em http://0.0.0.0:${PORT}`));
